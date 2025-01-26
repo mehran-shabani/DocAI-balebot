@@ -37,39 +37,39 @@ It's completely **free** to use! 🚀
 
 
 3. Set up your environment variables:
-	•	Create a .env file in the root directory.
-	•	Add the following variables:
+   Create a .env file in the root directory.
+   Add the following variables:
 
-BALE_BOT_TOKEN=your_bale_bot_token
-TALKBOT_API_KEY=your_docai_api_key
-KAVEH_NEGAR_API_KEY=your_kaveh_negar_api_key
+   BALE_BOT_TOKEN=your_bale_bot_token
+   TALKBOT_API_KEY=your_docai_api_key
+   KAVEH_NEGAR_API_KEY=your_kaveh_negar_api_key
 
-4.	Run the server:
+4. Run the server:
    ```bash
    python manage.py runserver
 
 
-5.	Set the webhook for your bot:
+5. Set the webhook for your bot:
    ```bash
    curl "https://tapi.bale.ai/bot<BALE_BOT_TOKEN>/setWebhook?url=https://yourdomain.com/auth/bale-webhook/"
 
 ## Endpoints
-	•	Webhook: /auth/bale-webhook/
+	Webhook: /auth/bale-webhook/
 Handles all messages and interactions with the bot.
 
 ## How to Contribute
-	1.	Fork the repository.
-	2.	Create a new branch for your feature:
+1. Fork the repository.
+2.Create a new branch for your feature:
    ```bash
    git checkout -b feature-name
 
 
-	3.	Commit your changes and push them to your fork:
+3. Commit your changes and push them to your fork:
    ```bash
    git push origin feature-name
 
 
-	4.	Create a pull request to the main branch.
+4.Create a pull request to the main branch.
 
 ## License
 
