@@ -10,6 +10,8 @@ def handle_login_command(chat_id):
     وقتی کاربر دستور /login را وارد می‌کند،
     پیام درخواست شماره موبایل را برایش ارسال می‌کنیم.
     """
+    user, _ = BaleUser.objects.get_or_create(chat_id=chat_id)
+    user.save()
     send_message_to_bale(chat_id, "لطفاً شماره موبایل خود را وارد کنید.")
 
 def handle_phone_number(chat_id, phone_number):
@@ -32,7 +34,7 @@ def handle_phone_number(chat_id, phone_number):
         params = {
             'receptor': phone_number,
             'token': otp,
-            'template': 'verify_code'
+            'template': 'users'
         }
         api.verify_lookup(params)
         send_message_to_bale(chat_id, "کد تأیید برای شماره موبایل شما ارسال شد. لطفاً کد را وارد کنید.")

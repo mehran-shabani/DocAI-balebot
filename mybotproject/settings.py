@@ -10,7 +10,7 @@ load_dotenv(os.path.join(BASE_DIR, '.env'))
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'something-secret-dev')
 DEBUG = (os.getenv('DJANGO_DEBUG', 'True') == 'True')
 
-ALLOWED_HOSTS = [ "*"]
+ALLOWED_HOSTS = ['www.bale.medogram.ir', 'bale.medogram.ir', 'https://bale.medogram.ir']
 
 INSTALLED_APPS = [
     'django.contrib.admin',

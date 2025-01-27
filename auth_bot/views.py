@@ -6,7 +6,7 @@ from rest_framework.response import Response
 
 from .models import BaleUser, ChatSession
 from .talkbot import talk_to_bot
-from . import auth  
+from . import auth
 from .utils import send_message_to_bale  
 
 @api_view(['POST'])

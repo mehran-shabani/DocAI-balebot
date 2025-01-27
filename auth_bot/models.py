@@ -94,6 +94,7 @@ class ChatSession(models.Model):
         related_name='chat_sessions',
         verbose_name="User"
     )
+    is_active = models.BooleanField(default=False)
     user_message = models.TextField(verbose_name="User Message", help_text="Message sent by the user.")
     bot_response = models.TextField(verbose_name="Bot Response", help_text="Response sent by the bot.")
     assistant_role = models.CharField(
