@@ -1,0 +1,6 @@
+Django
+djangorestframework
+djangorestframework-simplejwt
+kavenegar
+python-dotenv
+django-cors-headers
