@@ -1,22 +1,32 @@
 from django.db import models
 from django.utils.timezone import now
 
-
 class BaleUser(models.Model):
+    """
+    Represents a user in the Bale bot system. Each user is identified
+    by a unique chat_id and phone_number, and can have an OTP for authentication.
+    """
     chat_id = models.CharField(max_length=50, unique=True)
     phone_number = models.CharField(max_length=15, unique=True)
     otp = models.CharField(max_length=6, blank=True, null=True)
     is_authenticated = models.BooleanField(default=False)
 
     # Custom fields
-    daily_message_limit = models.PositiveIntegerField(default=23, verbose_name="Daily Message Limit")
-    current_message_count = models.PositiveIntegerField(default=0, verbose_name="Current Message Count")
+    daily_message_limit = models.PositiveIntegerField(
+        default=23,
+        verbose_name="Daily Message Limit"
+    )
+    current_message_count = models.PositiveIntegerField(
+        default=0,
+        verbose_name="Current Message Count"
+    )
     token_limit = models.PositiveIntegerField(
-        default=300,  # Default changed to 300
+        default=300,
         verbose_name="Token Output Limit",
         help_text="Maximum tokens for the response. Must be between 300 and 1000."
     )
 
+    # Assistant Roles
     ASSISTANT_ROLES = [
         ('general_physician', 'پزشک عمومی'),
         ('surgeon', 'جراح'),
@@ -37,6 +47,7 @@ class BaleUser(models.Model):
         verbose_name="Assistant Role"
     )
 
+    # System Roles
     SYSTEM_ROLES = [
         ('therapeutic', 'سیستم درمانی'),
         ('diagnostic', 'سیستم تشخیصی'),
@@ -67,16 +78,26 @@ class BaleUser(models.Model):
     }
 
     def get_assistant_description(self):
-        """Return the description for the assistant role."""
-        return self.ROLE_DESCRIPTIONS.get(self.assistant_role, "توضیحی موجود نیست.")
+        """
+        Return the description for the assistant role.
+        """
+        return self.ROLE_DESCRIPTIONS.get(
+            self.assistant_role,
+            "توضیحی موجود نیست."
+        )
 
     def reset_daily_count(self):
-        """Reset daily message count for the user."""
+        """
+        Reset daily message count for the user.
+        """
         self.current_message_count = 0
         self.save()
 
     def increment_message_count(self):
-        """Increment the user's current message count."""
+        """
+        Increment the user's current message count.
+        Returns True if incremented (under limit), False if not.
+        """
         if self.current_message_count < self.daily_message_limit:
             self.current_message_count += 1
             self.save()
@@ -86,8 +107,11 @@ class BaleUser(models.Model):
     def __str__(self):
         return f"{self.phone_number} - Auth: {self.is_authenticated}"
 
-
 class ChatSession(models.Model):
+    """
+    A ChatSession holds a record of user and bot messages for a single conversation,
+    along with the user's chosen assistant_role and system_role.
+    """
     user = models.ForeignKey(
         BaleUser,
         on_delete=models.CASCADE,
@@ -95,8 +119,14 @@ class ChatSession(models.Model):
         verbose_name="User"
     )
     is_active = models.BooleanField(default=False)
-    user_message = models.TextField(verbose_name="User Message", help_text="Message sent by the user.")
-    bot_response = models.TextField(verbose_name="Bot Response", help_text="Response sent by the bot.")
+    user_message = models.TextField(
+        verbose_name="User Message",
+        help_text="Message sent by the user."
+    )
+    bot_response = models.TextField(
+        verbose_name="Bot Response",
+        help_text="Response sent by the bot."
+    )
     assistant_role = models.CharField(
         max_length=50,
         verbose_name="Assistant Role",
@@ -107,10 +137,16 @@ class ChatSession(models.Model):
         verbose_name="System Role",
         help_text="Role of the system during this session."
     )
-    created_at = models.DateTimeField(default=now, verbose_name="Created At")
+    created_at = models.DateTimeField(
+        default=now,
+        verbose_name="Created At"
+    )
 
     def __str__(self):
-        return f"Session {self.id} - User: {self.user.phone_number} - Assistant: {self.assistant_role} - System: {self.system_role}"
+        return (
+            f"Session {self.id} - User: {self.user.phone_number} - "
+            f"Assistant: {self.assistant_role} - System: {self.system_role}"
+        )
 
     class Meta:
         verbose_name = "Chat Session"

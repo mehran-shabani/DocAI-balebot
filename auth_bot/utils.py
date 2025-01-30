@@ -3,7 +3,7 @@ from django.conf import settings
 
 def send_message_to_bale(chat_id, text):
     """
-    تابع کمکی برای ارسال پیام به کاربر در پیام‌رسان بله.
+    Helper function to send a message to a user in Bale messenger.
     """
     bot_token = settings.BALE_BOT_TOKEN
     url = f"https://tapi.bale.ai/bot{bot_token}/sendMessage"

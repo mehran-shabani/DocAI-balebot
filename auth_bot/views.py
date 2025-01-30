@@ -7,13 +7,13 @@ from rest_framework.response import Response
 from .models import BaleUser, ChatSession
 from .talkbot import talk_to_bot
 from . import auth
-from .utils import send_message_to_bale  
+from .utils import send_message_to_bale
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def bale_webhook_view(request):
     """
-    وبهوک اصلی ربات بله برای مدیریت تمام پیام‌های دریافتی.
+    Main Bale bot webhook to handle all incoming messages.
     """
     update_json = request.data
 
@@ -22,56 +22,56 @@ def bale_webhook_view(request):
         chat_id = str(message["chat"]["id"])
         text = message.get("text", "").strip()
 
-        # 1) دستور /start برای خوشامدگویی
+        # 1) /start command
         if text.lower() == "/start":
             return handle_start(chat_id)
 
-        # 2) دستور لاگین
+        # 2) /login command
         elif text.lower() == "/login":
             auth.handle_login_command(chat_id)
             return Response(status=200)
 
-        # 3) کاربر شماره موبایل را وارد کرده (11 رقمی و شروع با 09)
+        # 3) If the user enters something like 09xxxxxxxxx (phone number)
         elif text.isdigit() and len(text) == 11 and text.startswith("09"):
             auth.handle_phone_number(chat_id, text)
             return Response(status=200)
 
-        # 4) کد OTP (6 رقمی)
+        # 4) If the user enters a 6-digit OTP code
         elif text.isdigit() and len(text) == 6:
             auth.handle_otp(chat_id, text)
             return Response(status=200)
 
-        # 5) دستور /logout
+        # 5) /logout command
         elif text.lower() == "/logout":
             auth.handle_logout_command(chat_id)
             return Response(status=200)
 
-        # 6) دستور شروع چت
+        # 6) /startchat command
         elif text.lower() == "/startchat":
             return start_chat(chat_id)
 
-        # 7) علامت # برای پایان چت
+        # 7) '#' symbol to end chat
         elif text == "#":
             return end_chat(chat_id)
 
-        # 8) بررسی اینکه آیا ورودی عددی برای انتخاب نقش/تأیید یا رد آن است
+        # 8) Check if input is a digit for role selection/confirmation
         elif text.isdigit():
             return handle_role_selection_or_confirmation(chat_id, text)
 
-        # 9) در نهایت اگر به موارد بالا نخوریم، یعنی پیام عادی کاربر است
+        # 9) Otherwise, treat this as a normal user message
         else:
             return handle_chat_message(chat_id, text)
 
-    # اگر ساختار پیام دریافتی غیرمنتظره بود
+    # If the incoming structure isn't what we expect, just respond 200
     return Response(status=200)
 
 
 def handle_start(chat_id):
     """
-    دستور /start برای خوشامدگویی و ارائه‌ی توضیحات اولیه.
+    /start command to greet the user and show basic info.
     """
     welcome_message = (
-        "به ربات خوش آمدید! \n\n"
+        "به ربات خوش آمدید!\n\n"
         "برای ورود دستور /login را وارد کنید.\n"
         "اگر قبلاً وارد شده‌اید، می‌توانید دستور /startchat را برای شروع مکالمه وارد کنید.\n\n"
         "راهنما:\n"
@@ -83,23 +83,27 @@ def handle_start(chat_id):
     send_message_to_bale(chat_id, welcome_message)
     return Response(status=200)
 
-
 def start_chat(chat_id):
     """
-    شروع چت تنها در صورتی ممکن است که کاربر احراز هویت شده باشد.
-    سپس لیست نقش‌ها را برای انتخاب ارسال می‌کنیم.
+    Start chat if user is authenticated. Sends the list of roles for selection.
     """
     user = BaleUser.objects.filter(chat_id=chat_id).first()
     if not user:
-        send_message_to_bale(chat_id, "شما هنوز ثبت‌نام نکرده‌اید. لطفاً ابتدا دستور /login را وارد کنید.")
+        send_message_to_bale(
+            chat_id,
+            "شما هنوز ثبت‌نام نکرده‌اید. لطفاً ابتدا دستور /login را وارد کنید."
+        )
         return Response(status=400)
 
     if not user.is_authenticated:
-        send_message_to_bale(chat_id, "ابتدا باید وارد شوید. لطفاً دستور /login را وارد کنید.")
+        send_message_to_bale(
+            chat_id,
+            "ابتدا باید وارد شوید. لطفاً دستور /login را وارد کنید."
+        )
         return Response(status=400)
 
-    roles = BaleUser.ASSISTANT_ROLES  # [('doctor', 'پزشک'), ('psychologist', 'روانشناس'), ...]
-    role_list = "\n".join([f"{i+1}. {role[1]}" for i, role in enumerate(roles)])
+    roles = BaleUser.ASSISTANT_ROLES  # e.g., [('general_physician', 'پزشک عمومی'), ...]
+    role_list = "\n".join([f"{i+1}. {r[1]}" for i, r in enumerate(roles)])
     message = (
         "لطفاً یکی از نقش‌های زیر را انتخاب کنید:\n"
         f"{role_list}\n\n"
@@ -108,23 +112,28 @@ def start_chat(chat_id):
     send_message_to_bale(chat_id, message)
     return Response(status=200)
 
-
 def handle_role_selection_or_confirmation(chat_id, text):
     """
-    اگر عدد 1 یا 0 باشد، یعنی کاربر در حال تأیید یا رد نقش انتخاب‌شده است.
-    اگر عدد دیگری است، یعنی کاربر در حال انتخاب نقش است.
+    If the number is 1 or 0, user might be confirming or rejecting the role.
+    If another number, user might be selecting a role from the list.
     """
     user = BaleUser.objects.filter(chat_id=chat_id).first()
     if not user:
-        send_message_to_bale(chat_id, "شما هنوز ثبت‌نام نکرده‌اید. لطفاً دستور /login را وارد کنید.")
+        send_message_to_bale(
+            chat_id,
+            "شما هنوز ثبت‌نام نکرده‌اید. لطفاً ابتدا دستور /login را وارد کنید."
+        )
         return Response(status=400)
 
     if not user.is_authenticated:
-        send_message_to_bale(chat_id, "ابتدا باید وارد شوید. لطفاً دستور /login را وارد کنید.")
+        send_message_to_bale(
+            chat_id,
+            "ابتدا باید وارد شوید. لطفاً دستور /login را وارد کنید."
+        )
         return Response(status=400)
 
     if text == "1":
-        # تأیید نقش
+        # Confirm role
         if user.assistant_role:
             send_message_to_bale(
                 chat_id,
@@ -133,14 +142,17 @@ def handle_role_selection_or_confirmation(chat_id, text):
                 "پیام خود را ارسال کنید و برای پایان چت علامت # را ارسال نمایید."
             )
         else:
-            send_message_to_bale(chat_id, "ابتدا باید نقش را انتخاب کنید. دستور /startchat را بزنید.")
+            send_message_to_bale(
+                chat_id,
+                "ابتدا باید نقش را انتخاب کنید. دستور /startchat را بزنید."
+            )
         return Response(status=200)
 
     elif text == "0":
-        # رد نقش و انتخاب مجدد
+        # Reject role and re-select
         return start_chat(chat_id)
 
-    # انتخاب نقش با عدد
+    # Otherwise, user is selecting a role from the list
     roles = BaleUser.ASSISTANT_ROLES
     try:
         role_index = int(text) - 1
@@ -156,57 +168,112 @@ def handle_role_selection_or_confirmation(chat_id, text):
         else:
             raise ValueError
     except ValueError:
-        send_message_to_bale(chat_id, "شماره واردشده نامعتبر است. لطفاً شماره‌ای از لیست ارسال کنید.")
+        send_message_to_bale(
+            chat_id,
+            "شماره واردشده نامعتبر است. لطفاً شماره‌ای از لیست ارسال کنید."
+        )
 
     return Response(status=200)
 
-
 def handle_chat_message(chat_id, text):
     """
-    رسیدگی به پیام عادی کاربر.  
-    تنها زمانی اجازه ارسال پیام به بات را داریم که کاربر احراز هویت شده باشد و یک نقش انتخاب و تأیید کرده باشد.
+    Handle a normal user message.
+    Only allowed if the user is authenticated and has selected/confirmed a role.
     """
     user = BaleUser.objects.filter(chat_id=chat_id).first()
     if not user:
-        send_message_to_bale(chat_id, "شما هنوز ثبت‌نام نکرده‌اید. لطفاً ابتدا دستور /login را وارد کنید.")
+        send_message_to_bale(
+            chat_id,
+            "شما هنوز ثبت‌نام نکرده‌اید. لطفاً ابتدا دستور /login را وارد کنید."
+        )
         return Response(status=400)
 
     if not user.is_authenticated:
-        send_message_to_bale(chat_id, "ابتدا باید وارد شوید. لطفاً دستور /login را وارد کنید.")
+        send_message_to_bale(
+            chat_id,
+            "ابتدا باید وارد شوید. لطفاً دستور /login را وارد کنید."
+        )
         return Response(status=400)
 
     if not user.assistant_role:
-        send_message_to_bale(chat_id, "شما هنوز نقشی انتخاب نکرده‌اید. دستور /startchat را ارسال کنید.")
+        send_message_to_bale(
+            chat_id,
+            "شما هنوز نقشی انتخاب نکرده‌اید. دستور /startchat را ارسال کنید."
+        )
         return Response(status=400)
 
-    # اگر همه چیز درست بود، حالا پیام را به بات ارسال می‌کنیم
-    # ابتدا سشن فعال را چک کرده یا می‌سازیم
-    session, _ = ChatSession.objects.get_or_create(user=user, is_active=True)
-
-    # بررسی محدودیت روزانه
+    # Check daily limit
     if user.current_message_count >= user.daily_message_limit:
-        send_message_to_bale(chat_id, "شما به حد پیام روزانه خود رسیده‌اید. لطفاً فردا دوباره تلاش کنید.")
+        send_message_to_bale(
+            chat_id,
+            "شما به حد پیام روزانه خود رسیده‌اید. لطفاً فردا دوباره تلاش کنید."
+        )
         return Response(status=400)
 
-    # ساختار پیام ارسالی به هوش مصنوعی
-    messages = [
-        {"role": "system", "content": user.get_assistant_description()},
-        {"role": "user", "content": text}
-    ]
+    # Gather recent conversation history to provide memory
+    # Let's say we want the last 5 sessions for short-term memory.
+    # You can customize as needed:
+    recent_sessions = ChatSession.objects.filter(user=user).order_by('-created_at')[:5]
+    # We reverse them (oldest -> newest) for correct order
+    recent_sessions = reversed(recent_sessions)
 
-    # فراخوانی تابع هوش مصنوعی (مثلاً GPT)
-    bot_response = talk_to_bot(messages)
-    answer = bot_response.get("choices", [{}])[0].get("message", {}).get("content", "پاسخی دریافت نشد.")
+    user_messages = []
+    assistant_messages = []
 
-    # ذخیره پیام کاربر و پاسخ در چت
+    for s in recent_sessions:
+        # Each session has user_message, bot_response
+        user_messages.append({
+            "role": "user",
+            "content": s.user_message
+        })
+        assistant_messages.append({
+            "role": "assistant",
+            "content": s.bot_response
+        })
+
+    # We'll provide a system prompt that includes the user's assistant role description
+    system_prompt = (
+        f"{user.get_assistant_description()}\n"
+        "شما یک دستیار هوشمند هستید؛ لطفاً ابتدا گام‌به‌گام فکر کنید ولی در نهایت خلاصه و مفید پاسخ دهید."
+    )
+
+    # Now call talk_to_bot with the new user message appended (if needed).
+    # We'll pass the history + new user message as the last item in user_messages.
+    # We'll do that by just appending the new text to user_messages:
+    user_messages.append({"role": "user", "content": text})
+
+    bot_response_data = talk_to_bot(
+        user_messages=user_messages,
+        assistant_messages=assistant_messages,
+        system_role_description=system_prompt,
+        model="gpt-4o-mini",
+        max_tokens=user.token_limit,
+        temperature=0.3
+    )
+
+    # Extract final answer
+    if "error" in bot_response_data:
+        answer = f"خطایی رخ داد: {bot_response_data['error']}"
+    else:
+        answer = (
+            bot_response_data.get("choices", [{}])[0]
+            .get("message", {})
+            .get("content", "پاسخی دریافت نشد.")
+        )
+
+    # Create/Update the active chat session
+    session, _ = ChatSession.objects.get_or_create(user=user, is_active=True)
     session.user_message = text
     session.bot_response = answer
+    # Use the roles from BaleUser
+    session.assistant_role = user.assistant_role
+    session.system_role = user.system_role
     session.save()
 
-    # افزایش شمارنده پیام کاربر
+    # Increment message count
     user.increment_message_count()
-    user.save()
 
+    # Send response to Bale
     remaining = user.daily_message_limit - user.current_message_count
     final_text = (
         f"{answer}\n\n"
@@ -216,21 +283,26 @@ def handle_chat_message(chat_id, text):
     send_message_to_bale(chat_id, final_text)
     return Response(status=200)
 
-
 def end_chat(chat_id):
     """
-    پایان چت فعال با ارسال علامت #.
+    End the active chat session when user sends '#'.
     """
     user = BaleUser.objects.filter(chat_id=chat_id).first()
     if not user:
-        send_message_to_bale(chat_id, "شما هنوز ثبت‌نام نکرده‌اید. لطفاً ابتدا دستور /login را وارد کنید.")
+        send_message_to_bale(
+            chat_id,
+            "شما هنوز ثبت‌نام نکرده‌اید. لطفاً ابتدا دستور /login را وارد کنید."
+        )
         return Response(status=400)
 
     session = ChatSession.objects.filter(user=user, is_active=True).first()
     if session:
         session.is_active = False
         session.save()
-        send_message_to_bale(chat_id, "چت شما پایان یافت. برای شروع چت جدید دستور /startchat را ارسال کنید.")
+        send_message_to_bale(
+            chat_id,
+            "چت شما پایان یافت. برای شروع چت جدید دستور /startchat را ارسال کنید."
+        )
     else:
         send_message_to_bale(chat_id, "شما در حال حاضر چت فعالی ندارید.")
     return Response(status=200)
