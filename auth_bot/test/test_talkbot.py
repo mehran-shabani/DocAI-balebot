@@ -5,7 +5,7 @@ from auth_bot.talkbot import talk_to_bot
 
 class TalkbotTests(TestCase):
 
-    @patch("myapp.talkbot.requests.post")
+    @patch("auth_bale.talkbot.requests.post")
     def test_talk_to_bot_success(self, mock_post):
         # Mock a successful response
         mock_post.return_value.ok = True
@@ -30,7 +30,7 @@ class TalkbotTests(TestCase):
         self.assertEqual(response["choices"][0]["message"]["content"], "Test response")
         self.assertTrue(mock_post.called)
 
-    @patch("myapp.talkbot.requests.post")
+    @patch("auth_bale.talkbot.requests.post")
     def test_talk_to_bot_error(self, mock_post):
         # Mock an error response
         mock_post.return_value.ok = False
@@ -44,7 +44,7 @@ class TalkbotTests(TestCase):
         self.assertIn("400", response["error"])
         self.assertTrue(mock_post.called)
 
-    @patch("myapp.talkbot.requests.post")
+    @patch("auth_bale.talkbot.requests.post")
     def test_talk_to_bot_request_exception(self, mock_post):
         # Mock an exception in requests
         mock_post.side_effect = Exception("Connection error")
