@@ -4,7 +4,7 @@ from auth_bot.utils import send_message_to_bale
 
 class UtilsTests(TestCase):
 
-    @patch("myapp.utils.requests.post")
+    @patch("auth_bale.utils.requests.post")
     def test_send_message_to_bale(self, mock_post):
         chat_id = "12345"
         text = "Hello from test"
