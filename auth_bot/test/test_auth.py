@@ -14,7 +14,7 @@ class AuthTests(TestCase):
     def setUp(self):
         self.chat_id = "12345"
 
-    @patch("myapp.auth.send_message_to_bale")
+    @patch("auth_bale.auth.send_message_to_bale")
     def test_handle_login_command(self, mock_send):
         """
         Test that handle_login_command creates BaleUser if not exists
@@ -29,8 +29,8 @@ class AuthTests(TestCase):
         self.assertIsNotNone(user)
         mock_send.assert_called_with(self.chat_id, "لطفاً شماره موبایل خود را وارد کنید.")
 
-    @patch("myapp.auth.send_message_to_bale")
-    @patch("myapp.auth.KavenegarAPI")
+    @patch("auth_bale.auth.send_message_to_bale")
+    @patch("auth_bale.auth.KavenegarAPI")
     def test_handle_phone_number(self, mock_kaveh, mock_send):
         """
         Test handle_phone_number sets phone_number, generates OTP, and sends it.
@@ -67,7 +67,7 @@ class AuthTests(TestCase):
             "احراز هویت موفق بود! اکنون می‌توانید از خدمات استفاده کنید. 🌟"
         )
 
-    @patch("myapp.auth.send_message_to_bale")
+    @patch("auth_bale.auth.send_message_to_bale")
     def test_handle_otp_failure(self, mock_send):
         """
         Test an invalid OTP.
@@ -84,7 +84,7 @@ class AuthTests(TestCase):
             "کد واردشده نامعتبر است. لطفاً دوباره تلاش کنید."
         )
 
-    @patch("myapp.auth.send_message_to_bale")
+    @patch("auth_bale.auth.send_message_to_bale")
     def test_handle_logout_command(self, mock_send):
         """
         Test handle_logout_command sets is_authenticated=False.
@@ -103,7 +103,7 @@ class AuthTests(TestCase):
             "شما با موفقیت از سیستم خارج شدید. 🌟"
         )
 
-    @patch("myapp.auth.send_message_to_bale")
+    @patch("auth_bale.auth.send_message_to_bale")
     def test_handle_logout_command_no_user(self, mock_send):
         """
         Test handle_logout_command if user not found.
